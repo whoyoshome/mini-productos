@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+/* ===== Animations & utilities ===== */
+@keyframes modal-fade-scale-in {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes backdrop-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes dash-march {
+  to { background-position: 100% 0, 0 0, 0 100%, 0 0; }
+}
+
+/* Modal animation helpers */
+.animate-modal-in {
+  animation: modal-fade-scale-in 180ms ease-out both;
+}
+.animate-backdrop-in {
+  animation: backdrop-fade-in 180ms ease-out both;
+}
+
+/* Upload icon float */
+.animate-float-y { animation: float-y 2s ease-in-out infinite; }
+
+/* Dashed animated border (using gradients) */
+.dash-animated {
+  position: relative;
+}
+.dash-animated::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px; /* border thickness */
+  background:
+    linear-gradient(90deg, #ccc 50%, transparent 0) top left/10px 1px repeat-x,
+    linear-gradient(90deg, #ccc 50%, transparent 0) bottom left/10px 1px repeat-x,
+    linear-gradient(0deg, #ccc 50%, transparent 0) top left/1px 10px repeat-y,
+    linear-gradient(0deg, #ccc 50%, transparent 0) top right/1px 10px repeat-y;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+.dash-animated:hover::before {
+  animation: dash-march 1s linear infinite;
+}

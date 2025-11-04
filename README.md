@@ -15,6 +15,10 @@ A modern product catalog built with Next.js 16, React 19, Prisma, and Tailwind C
 - 🎨 Beautiful animations and transitions
 - 🔔 Toast notifications for user feedback
 - 🔌 Complete REST API with GET, POST, PATCH, DELETE endpoints
+- 🎣 Custom React hooks for reusable logic (image loading, drag & drop, scroll lock)
+- 📁 Professional project structure with `src/` organization
+- 🏗️ Route groups for clean URL structure
+- 🧩 Feature-based component organization (products/, shared/, ui/)
 
 ## Tech Stack
 
@@ -105,34 +109,53 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ```
 mini-productos/
-├── app/                    # Next.js App Router
-│   ├── @modal/             # Parallel route for modal overlay
-│   ├── api/                # API routes (products, image proxy)
-│   ├── products/           # Products listing page
-│   ├── layout.tsx          # Root layout with header and toast
-│   ├── page.tsx            # Home page (product catalog)
-│   └── globals.css         # Global styles and animations
-├── components/             # React components
-│   ├── product-card.tsx    # Product card with menu and delete
-│   ├── product-form.tsx    # Create/edit form with validation
-│   ├── search-bar.tsx      # Real-time search input
-│   ├── sort-controls.tsx   # Sort dropdown (Newest, A–Z, etc.)
-│   ├── paginator.tsx       # Pagination controls
-│   └── ui/                 # UI primitives (button, input, etc.)
-├── lib/                    # Small helpers and constants
-│   ├── constants.ts        # Timeouts, z-index, pagination sizes
-│   └── utils.ts            # Misc utilities
-├── libs/                   # Utility functions
-│   ├── prisma.ts           # Prisma client singleton
-│   ├── url.ts              # URL normalization and proxy logic
-│   ├── placeholder.ts      # SVG placeholder generator
-│   └── validations.ts      # Zod schemas
+├── src/                    # Source code
+│   ├── app/                # Next.js App Router
+│   │   ├── (main)/         # Route group for main pages
+│   │   │   ├── page.tsx    # Home page (product catalog)
+│   │   │   └── products/
+│   │   │       └── page.tsx # Product form page
+│   │   ├── api/            # API routes (products, image proxy)
+│   │   │   ├── image/
+│   │   │   └── products/
+│   │   ├── layout.tsx      # Root layout with header and toast
+│   │   ├── loading.tsx     # Loading UI
+│   │   └── globals.css     # Global styles and animations
+│   ├── components/         # React components
+│   │   ├── products/       # Product-specific components
+│   │   │   ├── product-card.tsx    # Product card with menu and delete
+│   │   │   ├── product-form.tsx    # Create/edit form with validation
+│   │   │   └── product-dialog.tsx  # Product modal/dialog wrapper
+│   │   ├── shared/         # Shared components across features
+│   │   │   ├── search-bar.tsx      # Real-time search input
+│   │   │   ├── sort-controls.tsx   # Sort dropdown
+│   │   │   ├── paginator.tsx       # Pagination controls
+│   │   │   └── page-size-input.tsx # Page size selector
+│   │   └── ui/             # shadcn/ui primitives (button, input, etc.)
+│   ├── hooks/              # Custom React hooks
+│   │   ├── use-image-loader.ts      # Image loading with timeout & fallback
+│   │   ├── use-drag-and-drop.ts     # Drag & drop file handling
+│   │   ├── use-body-scroll-lock.ts  # Body scroll lock for modals
+│   │   └── index.ts                 # Hook exports
+│   ├── lib/                # Unified utilities
+│   │   ├── db.ts           # Prisma client singleton
+│   │   ├── constants.ts    # Timeouts, z-index, pagination sizes
+│   │   ├── utils.ts        # cn() helper and misc utilities
+│   │   ├── url.ts          # URL normalization and proxy logic
+│   │   ├── placeholder.ts  # SVG placeholder generator
+│   │   └── validations.ts  # Zod schemas
+│   └── types/              # TypeScript types
+│       ├── product.ts      # Product type definitions
+│       ├── api.ts          # API response types
+│       └── index.ts        # Type exports
 ├── prisma/                 # Prisma schema and migrations
 │   ├── schema.prisma       # Database schema
 │   ├── seed.ts             # Seed script
 │   └── migrations/         # Migration history
-└── types/                  # TypeScript types
-    └── product.ts          # Product type definitions
+├── public/                 # Static assets
+├── .env                    # Environment variables
+├── .env.example            # Environment variables template
+└── ...config files         # Next.js, TypeScript, Tailwind, etc.
 ```
 
 ## How to Use
@@ -228,13 +251,72 @@ Run this to check for type errors without building.
 
 If you see "database is locked", close any open Prisma Studio instances and restart the dev server.
 
+### Search not working
+
+- Search uses SQLite's `LIKE` operator which is case-sensitive by default
+- For case-insensitive search on SQLite, the data needs to be indexed properly or use application-level normalization
+- On PostgreSQL, you can use Prisma's `mode: "insensitive"` option for better search UX
+
+## Custom Hooks
+
+The project includes reusable React hooks in `src/hooks/`:
+
+### `useImageLoader(imageUrl, fallbackLabel, timeout)`
+Handles image loading with automatic timeout and fallback to SVG placeholder.
+
+**Features:**
+- Automatic proxy detection for CORS-restricted URLs
+- Configurable timeout before showing placeholder
+- Returns `{ src, loaded, failed, onLoad, onError }` for image element binding
+
+**Usage:**
+```tsx
+const { src, loaded, onLoad, onError } = useImageLoader(
+  product.imageUrl,
+  product.name,
+  IMAGE_LOAD_TIMEOUT_MS
+);
+
+<img src={src} onLoad={onLoad} onError={onError} />
+```
+
+### `useDragAndDrop(onFileDrop)`
+Provides drag and drop functionality for file uploads.
+
+**Features:**
+- Drag counter to prevent flicker on nested elements
+- Visual feedback with `isDragging` state
+- Returns handlers object to spread on drop zone
+
+**Usage:**
+```tsx
+const { isDragging, dragHandlers } = useDragAndDrop(handleFile);
+
+<div {...dragHandlers} className={isDragging ? 'active' : ''}>
+  Drop files here
+</div>
+```
+
+### `useBodyScrollLock(enabled)`
+Locks body scroll when modals/dialogs are open, preserving scroll position.
+
+**Features:**
+- Compensates for scrollbar width to prevent layout shift
+- Restores original scroll position on cleanup
+- Automatically handles cleanup on unmount
+
+**Usage:**
+```tsx
+useBodyScrollLock(isModalOpen);
+```
+
 ## Environment Variables (Optional)
 
-Create a `.env` file in the root if you want to customize:
+Create a `.env` file in the root if you want to customize (see `.env.example` for template):
 
 ```env
 DATABASE_URL="file:./dev.db"
-NODE_ENV="development"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 ```
 
 ## API Endpoints
@@ -245,7 +327,7 @@ The project includes a complete REST API for products:
 Get all products with optional filters.
 
 **Query params:**
-- `search` - Filter by product name (case-insensitive)
+- `search` - Filter by product name (case-sensitive on SQLite)
 - `sortBy` - Sort order: `newest`, `oldest`, `name-asc`, `name-desc`
 - `page` - Page number (default: 1)
 - `pageSize` - Items per page (default: 10)
