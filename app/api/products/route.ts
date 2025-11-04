@@ -2,6 +2,74 @@ import { prisma } from "@/libs/prisma";
 import { productSchema } from "@/libs/validations";
 import { NextResponse } from "next/server";
 
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const idParam = url.searchParams.get("id");
+
+    if (idParam) {
+      const id = Number(idParam);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+      }
+
+      const product = await prisma.product.findUnique({ where: { id } });
+
+      if (!product) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(product, { status: 200 });
+    }
+
+    const search = url.searchParams.get("search") || "";
+    const sortBy = url.searchParams.get("sortBy") || "newest";
+    const page = Number(url.searchParams.get("page")) || 1;
+    const pageSize = Number(url.searchParams.get("pageSize")) || 10;
+
+    const skip = (page - 1) * pageSize;
+
+    const where = search
+      ? { name: { contains: search, mode: "insensitive" as const } }
+      : {};
+
+    let orderBy: any = { createdAt: "desc" };
+    if (sortBy === "oldest") orderBy = { createdAt: "asc" };
+    if (sortBy === "name-asc") orderBy = { name: "asc" };
+    if (sortBy === "name-desc") orderBy = { name: "desc" };
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      {
+        products,
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("GET /api/products error:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();

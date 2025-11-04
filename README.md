@@ -9,10 +9,12 @@ A modern product catalog built with Next.js 16, React 19, Prisma, and Tailwind C
 - 🎯 Sorting (Newest, Oldest, A–Z, Z–A)
 - 📄 Pagination with configurable page size
 - 🖼️ Image proxy for external URLs (CORS bypass)
- - 📱 Responsive design with modern UI (shadcn/ui components)
- - ⚡ Fast, polished loading states (Skeleton)
- - 🎨 Beautiful animations and transitions
+- 📤 Drag & drop image upload with visual feedback
+- 📱 Responsive design with modern UI (shadcn/ui components)
+- ⚡ Fast, polished loading states (Skeleton)
+- 🎨 Beautiful animations and transitions
 - 🔔 Toast notifications for user feedback
+- 🔌 Complete REST API with GET, POST, PATCH, DELETE endpoints
 
 ## Tech Stack
 
@@ -139,7 +141,10 @@ mini-productos/
 
 1. Click the **"+ Add product"** button in the header.
 2. Fill in the product name and image URL.
-3. Click **"Upload image"** to pick a file (or paste an image URL).
+3. **Upload an image:**
+   - **Drag & drop:** Drag an image file from your file explorer directly onto the preview area
+   - **Click to upload:** Click **"Upload image"** button to select a file
+   - **Paste URL:** Enter an image URL in the input field
 4. Click **"Save"** to create the product.
 
 ### Edit a Product
@@ -198,6 +203,12 @@ Deletes all products and inserts the 6 sample items.
 - If an image fails to load after ~4 seconds, a placeholder SVG is shown.
 - Try using direct Unsplash URLs: `https://images.unsplash.com/photo-ID?w=1200&h=600&fit=crop`
 
+### Drag & drop not working
+
+- Make sure you're dragging an image file (jpg, png, gif, webp, etc.)
+- The drop zone is the entire preview area (with the dashed border when dragging)
+- You'll see a visual overlay saying "📤 Drop to upload" when hovering over the zone
+
 ### Port 3000 already in use
 
 ```bash
@@ -224,6 +235,84 @@ Create a `.env` file in the root if you want to customize:
 ```env
 DATABASE_URL="file:./dev.db"
 NODE_ENV="development"
+```
+
+## API Endpoints
+
+The project includes a complete REST API for products:
+
+### GET /api/products
+Get all products with optional filters.
+
+**Query params:**
+- `search` - Filter by product name (case-insensitive)
+- `sortBy` - Sort order: `newest`, `oldest`, `name-asc`, `name-desc`
+- `page` - Page number (default: 1)
+- `pageSize` - Items per page (default: 10)
+
+**Example:**
+```bash
+GET /api/products?search=keyboard&sortBy=name-asc&page=1&pageSize=5
+```
+
+**Response:**
+```json
+{
+  "products": [...],
+  "pagination": {
+    "page": 1,
+    "pageSize": 5,
+    "total": 6,
+    "totalPages": 2
+  }
+}
+```
+
+### GET /api/products?id={id}
+Get a single product by ID.
+
+**Example:**
+```bash
+GET /api/products?id=1
+```
+
+### POST /api/products
+Create a new product.
+
+**Body:**
+```json
+{
+  "name": "Keyboard",
+  "imageUrl": "https://..."
+}
+```
+
+### PATCH /api/products?id={id}
+Update an existing product.
+
+**Body:**
+```json
+{
+  "name": "Updated Name",
+  "imageUrl": "https://..."
+}
+```
+
+### DELETE /api/products?id={id}
+Delete a product.
+
+**Response:** 204 No Content
+
+### GET /api/image
+Image proxy to bypass CORS restrictions.
+
+**Query params:**
+- `u` - Image URL (required)
+- `label` - Alt text label (optional)
+
+**Example:**
+```bash
+GET /api/image?u=https://example.com/image.jpg&label=Product
 ```
 
 ## License
