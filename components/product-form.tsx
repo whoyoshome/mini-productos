@@ -50,6 +50,7 @@ export default function ProductForm({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
   const imageValue = watch("imageUrl");
 
   const previewSrc = useMemo(() => {
@@ -62,6 +63,68 @@ export default function ProductForm({
 
   const [broken, setBroken] = useState(false);
   useEffect(() => setBroken(false), [previewSrc]);
+
+  // Handle file processing (for both upload button and drag & drop)
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      setValue("imageUrl", dataUrl, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+      trigger("imageUrl");
+      setFileName(file.name);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Drag & Drop handlers
+  const dragCounter = useRef(0);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFile(file);
+    }
+  };
 
   const effectiveSrc = previewSrc || placeholderSvg(product?.name || "Image");
 
@@ -162,18 +225,7 @@ export default function ProductForm({
             className="sr-only"
             onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                const dataUrl = String(reader.result || "");
-                setValue("imageUrl", dataUrl, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                });
-                trigger("imageUrl");
-                setFileName(file.name);
-              };
-              reader.readAsDataURL(file);
+              if (file) handleFile(file);
             }}
           />
 
@@ -225,7 +277,17 @@ export default function ProductForm({
       </div>
 
       <div className="order-first md:order-0 md:self-start">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-linear-to-br from-sky-50 via-cyan-50 to-indigo-50 shadow-inner">
+        <div
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          className={`overflow-hidden rounded-2xl border-2 transition-all duration-200 ${
+            isDragging
+              ? "border-indigo-500 border-dashed bg-indigo-50 shadow-lg"
+              : "border-slate-200 bg-linear-to-br from-sky-50 via-cyan-50 to-indigo-50 shadow-inner"
+          }`}
+        >
           <div className="relative h-56 w-full md:h-64 lg:h-72 xl:h-80">
             {effectiveSrc ? (
               <Image
@@ -250,7 +312,9 @@ export default function ProductForm({
                   width="88"
                   height="88"
                   viewBox="0 0 24 24"
-                  className="text-sky-500"
+                  className={`transition-colors ${
+                    isDragging ? "text-indigo-600" : "text-sky-500"
+                  }`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.7"
@@ -259,15 +323,32 @@ export default function ProductForm({
                   <circle cx="9" cy="9" r="2" />
                   <path d="M21 15l-4.5-4.5L7 21" />
                 </svg>
-                <span className="text-sm font-medium text-slate-600">
-                  Image
+                <span
+                  className={`text-sm font-medium transition-colors ${
+                    isDragging ? "text-indigo-700" : "text-slate-600"
+                  }`}
+                >
+                  {isDragging ? "Drop image here" : "Image"}
                 </span>
+              </div>
+            )}
+            
+            {/* Drag overlay */}
+            {isDragging && (
+              <div className="absolute inset-0 flex items-center justify-center bg-indigo-500/10 backdrop-blur-[2px]">
+                <div className="rounded-lg bg-white/90 px-6 py-3 shadow-lg">
+                  <p className="text-sm font-semibold text-indigo-600">
+                    📤 Drop to upload
+                  </p>
+                </div>
               </div>
             )}
           </div>
         </div>
         <p className="mt-2 text-center text-xs text-slate-500">
-          The image preview updates automatically.
+          {isDragging 
+            ? "Release to upload the image" 
+            : "Drag & drop an image here or use the button below"}
         </p>
       </div>
     </form>
