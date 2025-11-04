@@ -1,4 +1,3 @@
-import { prisma } from "@/libs/prisma";
 import ProductCard from "@/components/product-card";
 import Paginator from "@/components/paginator";
 import SearchBar from "@/components/search-bar";
@@ -26,30 +25,38 @@ export default async function Home({
       ? rawSize
       : DEFAULT_PAGE_SIZE;
 
-  const whereClause = query ? { name: { contains: query } } : {};
   const sortParam = (params?.sort || "new").toString();
-  const orderBy: any =
+  const sortBy =
     sortParam === "old"
-      ? { createdAt: "asc" }
+      ? "oldest"
       : sortParam === "az"
-      ? { name: "asc" }
+      ? "name-asc"
       : sortParam === "za"
-      ? { name: "desc" }
-      : { createdAt: "desc" };
-  const total = await prisma.product.count({ where: whereClause });
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const rawPage = Math.max(1, Number(params?.page ?? "1") || 1);
-  const page = Math.min(rawPage, totalPages);
+      ? "name-desc"
+      : "newest";
 
-  const products = await prisma.product.findMany({
-    where: whereClause,
-    orderBy,
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-    select: { id: true, name: true, imageUrl: true, createdAt: true },
+  const rawPage = Math.max(1, Number(params?.page ?? "1") || 1);
+  const apiUrl = new URL(
+    `${
+      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+    }/api/products`
+  );
+  if (query) apiUrl.searchParams.set("search", query);
+  apiUrl.searchParams.set("sortBy", sortBy);
+  apiUrl.searchParams.set("page", rawPage.toString());
+  apiUrl.searchParams.set("pageSize", PAGE_SIZE.toString());
+
+  const response = await fetch(apiUrl.toString(), {
+    cache: "no-store",
   });
 
-  const items: ProductLite[] = products;
+  if (!response.ok) {
+    throw new Error("Failed to fetch products");
+  }
+
+  const data = await response.json();
+  const items: ProductLite[] = data.products;
+  const { total, page, totalPages } = data.pagination;
 
   const showingFrom = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const showingTo = Math.min(page * PAGE_SIZE, total);
